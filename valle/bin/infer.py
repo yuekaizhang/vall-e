@@ -217,6 +217,10 @@ def main():
                     [(encoded_frames.transpose(2, 1), None)]
                 )
                 # store
+                # save audio path into args.output_dir + audio_path
+                audio_path = f"{args.output_dir}/{audio_path}"
+                # mkdir -p
+                os.makedirs(os.path.dirname(audio_path), exist_ok=True)
                 torchaudio.save(audio_path, samples[0].cpu(), 24000)
         return
 

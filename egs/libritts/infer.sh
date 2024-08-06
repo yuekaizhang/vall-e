@@ -23,8 +23,6 @@ python3 bin/infer.py --output-dir demos \
 
 python3 bin/infer.py --output-dir demos \
         --top-k -1 --temperature 1.0 \
-        --model-name valle --share-embedding true --norm-first true --add-prenet false \
-        --decoder-dim 1024 --nhead 16 --num-decoder-layers 12 --prefix-mode 1 \
         --text-prompts "" \
         --audio-prompts "" \
         --text ./libritts.txt \
