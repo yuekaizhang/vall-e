@@ -4,9 +4,9 @@ export PYTHONPATH=$PYTHONPATH:/workspace/vall-e
 pip install k2==1.24.3.dev20230524+cuda11.8.torch2.0.1 -f https://k2-fsa.github.io/k2/cuda.html
 
 pip install -r /workspace/Amphion/requirements.txt
-pip install phonemizer pypinyin sentencepiece kaldialign
+pip install phonemizer pypinyin sentencepiece kaldialign matplotlib h5py
 
-apt-get update && apt-get install festival espeak-ng mbrola
+apt-get update && apt-get -y install festival espeak-ng mbrola
 
 world_size=8
 exp_dir=exp/valle
