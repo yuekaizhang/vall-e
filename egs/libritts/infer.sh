@@ -16,22 +16,24 @@ else
 fi
 exp_dir=exp/valle
 
+epoch=40
+avg=5
 python3 bin/generate_averaged_model.py \
-    --epoch 40 \
-    --avg 5 \
+    --epoch ${epoch} \
+    --avg ${avg} \
     --exp-dir ${exp_dir}
 
 
 
-python3 bin/infer.py --output-dir demos \
-    --checkpoint=${exp_dir}/epoch-40-avg-5.pt \
+python3 bin/infer.py --output-dir demos_epoch_${epoch}_avg_${avg} \
+    --checkpoint=${exp_dir}/epoch-${epoch}-avg-${avg}.pt \
     --text-prompts "KNOT one point one five miles per hour." \
     --audio-prompts ./prompts/8463_294825_000043_000000.wav \
     --text "To get up and running quickly just follow the steps below."
 
-python3 bin/infer.py --output-dir demos \
+python3 bin/infer.py --output-dir demos_epoch_${epoch}_avg_${avg} \
         --top-k -1 --temperature 1.0 \
         --text-prompts "" \
         --audio-prompts "" \
         --text ./libritts.txt \
-        --checkpoint ${exp_dir}/epoch-40-avg-5.pt
+        --checkpoint ${exp_dir}/epoch-${epoch}-avg-${avg}.pt
