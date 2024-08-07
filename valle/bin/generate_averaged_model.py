@@ -157,7 +157,8 @@ def main():
         #     )
         # )
         filename = params.exp_dir / f"epoch-{params.epoch}-avg-{params.avg}.pt"
-        torch.save({"model": model.state_dict()}, filename)
+        checkpoint["model"] = model.state_dict()
+        torch.save(checkpoint, filename)
 
     num_param = sum([p.numel() for p in model.parameters()])
     print(f"Number of model parameters: {num_param}")
