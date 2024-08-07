@@ -36,7 +36,7 @@ import k2
 import torch
 from valle.models import get_model
 
-from icefall.checkpoint import average_checkpoints_with_averaged_model, find_checkpoints
+from icefall.checkpoint import average_checkpoints_with_averaged_model, find_checkpoints, average_checkpoints
 from icefall.utils import AttributeDict
 
 def get_parser():
@@ -147,14 +147,15 @@ def main():
             f"Calculating the averaged model over epoch range from "
             f"{start} (excluded) to {params.epoch}"
         )
+        filenames = [f"{params.exp_dir}/epoch-{i}.pt" for i in range(start, params.epoch + 1)]
         model.to(device)
-        model.load_state_dict(
-            average_checkpoints_with_averaged_model(
-                filename_start=filename_start,
-                filename_end=filename_end,
-                device=device,
-            )
-        )
+        model.load_state_dict(average_checkpoints(filenames, device=device))
+        #     average_checkpoints_with_averaged_model(
+        #         filename_start=filename_start,
+        #         filename_end=filename_end,
+        #         device=device,
+        #     )
+        # )
         filename = params.exp_dir / f"epoch-{params.epoch}-avg-{params.avg}.pt"
         torch.save({"model": model.state_dict()}, filename)
 
