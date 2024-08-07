@@ -12,8 +12,9 @@ world_size=8
 exp_dir=exp/valle
 
 ## Train NAR model
-
-ln -s ${exp_dir}/best-valid-loss.pt ${exp_dir}/epoch-99.pt  # --start-epoch 3=2+1
+# cd ${exp_dir}
+# ln -s ${exp_dir}/best-valid-loss.pt epoch-99.pt  # --start-epoch 3=2+1
+# cd -
 python3 bin/trainer.py --max-duration 160 --filter-min-duration 0.5 --filter-max-duration 14 --train-stage 2 \
       --num-buckets 6 --dtype "float32" --save-every-n 1000 --valid-interval 2000 \
       --model-name valle --share-embedding true --norm-first true --add-prenet false \

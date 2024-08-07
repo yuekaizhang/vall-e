@@ -15,8 +15,16 @@ else
     echo "Skipping installation."
 fi
 exp_dir=exp/valle
+
+python3 bin/generate_averaged_model.py \
+    --epoch 40 \
+    --avg 5 \
+    --exp-dir ${exp_dir}
+
+
+
 python3 bin/infer.py --output-dir demos \
-    --checkpoint=${exp_dir}/best-valid-loss.pt \
+    --checkpoint=${exp_dir}/epoch-40-avg-5.pt \
     --text-prompts "KNOT one point one five miles per hour." \
     --audio-prompts ./prompts/8463_294825_000043_000000.wav \
     --text "To get up and running quickly just follow the steps below."
@@ -26,4 +34,4 @@ python3 bin/infer.py --output-dir demos \
         --text-prompts "" \
         --audio-prompts "" \
         --text ./libritts.txt \
-        --checkpoint ${exp_dir}/best-valid-loss.pt
+        --checkpoint ${exp_dir}/epoch-40-avg-5.pt
