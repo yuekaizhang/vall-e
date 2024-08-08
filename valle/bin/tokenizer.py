@@ -180,7 +180,7 @@ def main():
                         f"{args.output_dir}/{args.prefix}_fbank_{partition}"
                     )
 
-                if args.prefix.lower() in ["ljspeech", "aishell", "baker"]:
+                if args.prefix.lower() in ["ljspeech", "aishell", "baker", "wenetspeech4tts"]:
                     cut_set = cut_set.resample(24000)
                     # https://github.com/lifeiteng/vall-e/issues/90
                     # if args.prefix == "aishell":
@@ -228,7 +228,7 @@ def main():
                             text = c.supervisions[0].custom["normalized_text"]
                             text = text.replace("”", '"').replace("“", '"')
                             phonemes = tokenize_text(text_tokenizer, text=text)
-                        elif args.prefix == "aishell":
+                        elif args.prefix == "aishell" or args.prefix == "aishell2" or args.prefix == "wenetspeech4tts":
                             phonemes = tokenize_text(
                                 text_tokenizer, text=c.supervisions[0].text
                             )
