@@ -105,7 +105,13 @@ def get_args():
         help="The maximum number of audio seconds in a batch."
         "Determines batch size dynamically.",
     )
-
+    parser.add_argument(
+        "--split",
+        type=int,
+        default=1,
+        help="Split the cut_set into multiple parts",
+    )
+ 
     return parser.parse_args()
 
 
@@ -169,80 +175,80 @@ def main():
             except Exception:
                 cut_set = m["cuts"]
 
-            # AudioTokenizer
-            if args.audio_extractor:
-                if args.audio_extractor == "Encodec":
-                    storage_path = (
-                        f"{args.output_dir}/{args.prefix}_encodec_{partition}"
-                    )
-                else:
-                    storage_path = (
-                        f"{args.output_dir}/{args.prefix}_fbank_{partition}"
-                    )
+            # Split cut_set if split > 1
+            split = 1
+            if args.split > 1:
+                cut_sets = cut_set.split(args.split)
+                split = args.split
+            else:
+                cut_sets = [cut_set]
 
-                if args.prefix.lower() in ["ljspeech", "aishell", "baker", "wenetspeech4tts"]:
-                    cut_set = cut_set.resample(24000)
-                    # https://github.com/lifeiteng/vall-e/issues/90
-                    # if args.prefix == "aishell":
-                    #     # NOTE: the loudness of aishell audio files is around -33
-                    #     # The best way is datamodule --on-the-fly-feats --enable-audio-aug
-                    #     cut_set = cut_set.normalize_loudness(
-                    #         target=-20.0, affix_id=True
-                    #     )
-
-                with torch.no_grad():
-                    if (
-                        torch.cuda.is_available()
-                        and args.audio_extractor == "Encodec"
-                    ):
-                        cut_set = cut_set.compute_and_store_features_batch(
-                            extractor=audio_extractor,
-                            storage_path=storage_path,
-                            num_workers=num_jobs,
-                            batch_duration=args.batch_duration,
-                            collate=False,
-                            overwrite=True,
-                            storage_type=NumpyHdf5Writer,
+            for idx, part in enumerate(cut_sets):
+                # AudioTokenizer
+                if args.audio_extractor:
+                    if args.audio_extractor == "Encodec":
+                        storage_path = (
+                            f"{args.output_dir}/{args.prefix}_encodec_{partition}_{idx if split > 1 else ''}"
                         )
                     else:
-                        cut_set = cut_set.compute_and_store_features(
-                            extractor=audio_extractor,
-                            storage_path=storage_path,
-                            num_jobs=num_jobs if ex is None else 64,
-                            executor=ex,
-                            storage_type=NumpyHdf5Writer,
+                        storage_path = (
+                            f"{args.output_dir}/{args.prefix}_fbank_{partition}_{idx if split > 1 else ''}"
                         )
 
-            # TextTokenizer
-            if args.text_extractor:
-                if (
-                    args.prefix == "baker"
-                    and args.text_extractor == "labeled_pinyin"
-                ):
-                    for c in tqdm(cut_set):
-                        phonemes = c.supervisions[0].custom["tokens"]["text"]
-                        unique_symbols.update(phonemes)
-                else:
-                    for c in tqdm(cut_set):
-                        if args.prefix == "ljspeech":
-                            text = c.supervisions[0].custom["normalized_text"]
-                            text = text.replace("”", '"').replace("“", '"')
-                            phonemes = tokenize_text(text_tokenizer, text=text)
-                        elif args.prefix == "aishell" or args.prefix == "aishell2" or args.prefix == "wenetspeech4tts":
-                            phonemes = tokenize_text(
-                                text_tokenizer, text=c.supervisions[0].text
-                            )
-                            c.supervisions[0].custom = {}
-                        else:
-                            assert args.prefix == "libritts"
-                            phonemes = tokenize_text(
-                                text_tokenizer, text=c.supervisions[0].text
-                            )
-                        c.supervisions[0].custom["tokens"] = {"text": phonemes}
-                        unique_symbols.update(phonemes)
+                    if args.prefix.lower() in ["ljspeech", "aishell", "baker", "wenetspeech4tts"]:
+                        part = part.resample(24000)
 
-            cuts_filename = f"{prefix}cuts_{partition}.{args.suffix}"
-            cut_set.to_file(f"{args.output_dir}/{cuts_filename}")
+                    with torch.no_grad():
+                        if (
+                            torch.cuda.is_available()
+                            and args.audio_extractor == "Encodec"
+                        ):
+                            part = part.compute_and_store_features_batch(
+                                extractor=audio_extractor,
+                                storage_path=storage_path,
+                                num_workers=num_jobs,
+                                batch_duration=args.batch_duration,
+                                collate=False,
+                                overwrite=True,
+                                storage_type=NumpyHdf5Writer,
+                            )
+                        else:
+                            part = part.compute_and_store_features(
+                                extractor=audio_extractor,
+                                storage_path=storage_path,
+                                num_jobs=num_jobs if ex is None else 64,
+                                executor=ex,
+                                storage_type=NumpyHdf5Writer,
+                            )
+
+                # TextTokenizer
+                if args.text_extractor:
+                    for c in tqdm(part):
+                        if args.prefix == "baker" and args.text_extractor == "labeled_pinyin":
+                            phonemes = c.supervisions[0].custom["tokens"]["text"]
+                            unique_symbols.update(phonemes)
+                        else:
+                            if args.prefix == "ljspeech":
+                                text = c.supervisions[0].custom["normalized_text"]
+                                text = text.replace(""", '"').replace(""", '"')
+                                phonemes = tokenize_text(text_tokenizer, text=text)
+                            elif args.prefix in ["aishell", "aishell2", "wenetspeech4tts"]:
+                                phonemes = tokenize_text(
+                                    text_tokenizer, text=c.supervisions[0].text
+                                )
+                                c.supervisions[0].custom = {}
+                            else:
+                                assert args.prefix == "libritts"
+                                phonemes = tokenize_text(
+                                    text_tokenizer, text=c.supervisions[0].text
+                                )
+                            c.supervisions[0].custom["tokens"] = {"text": phonemes}
+                            unique_symbols.update(phonemes)
+
+                # Save each part with an index if split > 1
+                cuts_filename = f"{prefix}cuts_{partition}.{idx if split > 1 else ''}.{args.suffix}"
+                part.to_file(f"{args.output_dir}/{cuts_filename}")
+                logging.info(f"Saved {cuts_filename}")
 
     if args.text_extractor:
         unique_phonemes = SymbolTable()
