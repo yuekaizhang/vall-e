@@ -1037,8 +1037,9 @@ class VALLE(VALLF):
                 mask=xy_attn_mask,
             )
             logits = self.ar_predict_layer(xy_dec[:, -1])
+            ras=True
             samples = topk_sampling(
-                logits, top_k=top_k, top_p=1.0, temperature=temperature
+                logits, top_k=top_k, top_p=1.0, temperature=temperature, repetition_aware_sampling=ras, preceding_tokens=y
             )
 
             if (
@@ -1284,7 +1285,7 @@ def top_k_top_p_filtering(
     return logits
 
 
-def topk_sampling(logits, top_k=10, top_p=1.0, temperature=1.0):
+def topk_sampling(logits, top_k=10, top_p=1.0, temperature=1.0, repetition_aware_sampling=False, preceding_tokens=None):
     # temperature: (`optional`) float
     #     The value used to module the next token probabilities. Must be strictly positive. Default to 1.0.
     # top_k: (`optional`) int
@@ -1299,4 +1300,33 @@ def topk_sampling(logits, top_k=10, top_p=1.0, temperature=1.0):
     logits = top_k_top_p_filtering(logits, top_k=top_k, top_p=top_p)
     # Sample
     token = torch.multinomial(F.softmax(logits, dim=-1), num_samples=1)
+
+    if repetition_aware_sampling:
+        window_size = 10
+        threshold = 0.1
+        # we first generate the target code ct′
+        # by nucleus sampling with a pre-defined top-p value v. Then, we
+        # calculate the repetition ratio r of token ct′
+        # in the preceding code sequence with a window size K.
+        # If the ratio r exceeds a pre-defined repetition threshold ratio tn, we replace the target code ct′
+        # by
+        # random sampling from p(ct′
+        # |x, c<t·G,0; θAR). Otherwise, we keep the target code ct′.
+        # https://arxiv.org/abs/2406.05370
+        # y: B, T
+        # token: B, 1
+        assert preceding_tokens is not None
+        if preceding_tokens.shape[1] > window_size:
+            preceding_tokens = preceding_tokens[:, -window_size:]
+        if preceding_tokens.shape[1] > 0:
+            token = token.view(-1, 1)
+            token_resample = torch.where(
+                (preceding_tokens == token).sum(dim=1) / window_size > threshold,
+                torch.multinomial(F.softmax(logits, dim=-1), num_samples=1),
+                token,
+            )
+            # check if the token and token_resample are the same
+            if not torch.all(token == token_resample):
+                print("Repetition Aware Sampling", token, token_resample, preceding_tokens)
+            token = token_resample
     return token
