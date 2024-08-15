@@ -1324,8 +1324,13 @@ def topk_sampling(logits, top_k=10, top_p=1.0, temperature=1.0, repetition_aware
                 # check if the repeat ratio exceeds the threshold
                 if (item == tokens[i]).sum() / item.shape[0] > threshold:
                     # replace the target code ct′ by random sampling
-                    token_new = torch.multinomial(F.softmax(logits[i], dim=-1), num_samples=1)
+                    # make sure we don't sample the same token, by setting the probability of the token to 0
+                    probs = F.softmax(logits[i], dim=-1)
+                    probs[tokens[i]] = 0
+                    token_new = torch.multinomial(probs, num_samples=1)
+
                     print(f"Repetition Aware Sampling: {item}, {tokens[i]} -> {token_new}")
+                    print(probs, logits.shape)
                     tokens[i] = token_new
                 else:
                     print(f"Not trigger: {i}, {item}, {tokens[i]}")
