@@ -966,6 +966,7 @@ class VALLE(VALLF):
         enroll_x_lens: torch.Tensor,
         top_k: int = -100,
         temperature: float = 1.0,
+        top_p: float = 1.0,
     ) -> torch.Tensor:
         """
         Args:
@@ -1039,7 +1040,7 @@ class VALLE(VALLF):
             logits = self.ar_predict_layer(xy_dec[:, -1])
             ras=True
             samples = topk_sampling(
-                logits, top_k=top_k, top_p=1.0, temperature=temperature, repetition_aware_sampling=ras, preceding_tokens=y
+                logits, top_k=top_k, top_p=top_p, temperature=temperature, repetition_aware_sampling=ras, preceding_tokens=y
             )
 
             if (

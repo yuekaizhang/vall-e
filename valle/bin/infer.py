@@ -107,6 +107,13 @@ def get_args():
     )
 
     parser.add_argument(
+        "--top-p",
+        type=float,
+        default=1.0,
+        help="Whether AR Decoder do top_p(if > 0) sampling.",
+    )
+
+    parser.add_argument(
         "--temperature",
         type=float,
         default=1.0,
@@ -181,7 +188,9 @@ def main():
         # https://github.com/lifeiteng/lifeiteng.github.com/blob/main/valle/prepare.py
         with open(args.text) as f:
             for line in f:
-                fields = line.strip().split("\t")
+                # fields = line.strip().split("\t")
+                fields = line.strip().split(" ")
+                fields = [item for item in fields if item]
                 assert len(fields) == 4
                 prompt_text, prompt_audio, text, audio_path = fields
                 logging.info(f"synthesize text: {text}")
@@ -211,6 +220,7 @@ def main():
                     enroll_x_lens=enroll_x_lens,
                     top_k=args.top_k,
                     temperature=args.temperature,
+                    top_p=args.top_p,
                 )
 
                 samples = audio_tokenizer.decode(
@@ -259,6 +269,7 @@ def main():
                 enroll_x_lens=enroll_x_lens,
                 top_k=args.top_k,
                 temperature=args.temperature,
+                top_p=args.top_p,
             )
 
         if audio_prompts != []:
