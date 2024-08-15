@@ -1298,9 +1298,12 @@ def topk_sampling(logits, top_k=10, top_p=1.0, temperature=1.0, repetition_aware
     if temperature != 1.0:
         logits = logits / temperature
     # Top-p/top-k filtering
-    logits = top_k_top_p_filtering(logits, top_k=top_k, top_p=top_p)
+    logits = top_k_top_p_filtering(logits, top_k=top_k, top_p=top_p, min_tokens_to_keep=2)
     # Sample
-    tokens = torch.multinomial(F.softmax(logits, dim=-1), num_samples=1)
+    probs = F.softmax(logits, dim=-1)
+    # print top 10 value and index
+    print("top 10 value and index", torch.topk(probs, 10), top_p)    
+    tokens = torch.multinomial(probs, num_samples=1)
 
     if repetition_aware_sampling:
         window_size = 10
@@ -1325,7 +1328,7 @@ def topk_sampling(logits, top_k=10, top_p=1.0, temperature=1.0, repetition_aware
                 if (item == tokens[i]).sum() / window_size > threshold:
                     # replace the target code ct′ by random sampling
                     # make sure we don't sample the same token, by setting the probability of the token to 0
-                    logits[i][tokens[i]] = -float("Inf")
+                    # logits[i][tokens[i]] = -float("Inf")
                     probs = F.softmax(logits[i], dim=-1)
                     token_new = torch.multinomial(probs, num_samples=1)
 
