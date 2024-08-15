@@ -1300,7 +1300,7 @@ def topk_sampling(logits, top_k=10, top_p=1.0, temperature=1.0, repetition_aware
     # Top-p/top-k filtering
     logits = top_k_top_p_filtering(logits, top_k=top_k, top_p=top_p)
     # Sample
-    token = torch.multinomial(F.softmax(logits, dim=-1), num_samples=1)
+    tokens = torch.multinomial(F.softmax(logits, dim=-1), num_samples=1)
 
     if repetition_aware_sampling:
         window_size = 10
@@ -1312,7 +1312,7 @@ def topk_sampling(logits, top_k=10, top_p=1.0, temperature=1.0, repetition_aware
         # If the ratio r exceeds a pre-defined repetition threshold ratio tn, we replace the target code ct′
         # by
         # random sampling from p(ct′
-        # |x, c<t·G,0; θAR). Otherwise, we keep the target code ct′.
+        # |x, c<t·G,0; θAR). make sure the token is not repeated.
         # https://arxiv.org/abs/2406.05370
         # y: B, T
         # token: B, 1
@@ -1320,14 +1320,13 @@ def topk_sampling(logits, top_k=10, top_p=1.0, temperature=1.0, repetition_aware
         if preceding_tokens.shape[1] > window_size:
             preceding_tokens = preceding_tokens[:, -window_size:]
         if preceding_tokens.shape[1] > 0:
-            token = token.view(-1, 1)
-            token_resample = torch.where(
-                (preceding_tokens == token).sum(dim=1) / window_size > threshold,
-                torch.multinomial(F.softmax(logits, dim=-1), num_samples=1),
-                token,
-            )
-            # check if the token and token_resample are the same
-            if not torch.all(token == token_resample):
-                print("Repetition Aware Sampling", token, token_resample, preceding_tokens)
-            token = token_resample
-    return token
+            for i, item in enumerate(preceding_tokens):
+                # check if the repeat ratio exceeds the threshold
+                if (item == tokens[i]).sum() / item.shape[0] > threshold:
+                    # replace the target code ct′ by random sampling
+                    token_new = torch.multinomial(F.softmax(logits[i], dim=-1), num_samples=1)
+                    print(f"Repetition Aware Sampling: {item}, {tokens[i]} -> {token_new}")
+                    tokens[i] = token_new
+                else:
+                    print(f"Not trigger: {i}, {item}, {tokens[i]}")
+    return tokens
